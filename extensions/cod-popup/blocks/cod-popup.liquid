@@ -1,0 +1,298 @@
+
+<div id="totbagui-cod-overlay" hidden>
+  <div class="totbagui-cod-modal" role="dialog"
+       aria-modal="true" aria-labelledby="totbagui-cod-title">
+
+    <button type="button" id="totbagui-cod-close"
+            aria-label="Fermer">×</button>
+
+    <h2 id="totbagui-cod-title">Finaliser ma commande</h2>
+    <p>Paiement à la livraison</p>
+
+    <div class="totbagui-cod-product">
+      <strong id="totbagui-cod-product-name">Votre produit</strong>
+      <span id="totbagui-cod-product-price"></span>
+    </div>
+
+    <form id="totbagui-cod-form">
+      <label>Nom complet
+        <input name="fullName" required autocomplete="name"
+               placeholder="Votre nom complet">
+      </label>
+
+      <label>Numéro de téléphone
+        <input name="phone" type="tel" required
+               autocomplete="tel" placeholder="06XXXXXXXX">
+      </label>
+
+      <label>Adresse
+        <input name="address" required
+               autocomplete="street-address"
+               placeholder="Rue, immeuble, appartement">
+      </label>
+
+      <label>Ville
+        <input name="city" required autocomplete="address-level2"
+               placeholder="Casablanca">
+      </label>
+
+      <label class="totbagui-cod-offer">
+        <input type="checkbox" id="totbagui-cod-upsell">
+        <span>
+          <strong>Ajouter une offre spéciale</strong>
+          <small>Proposez ici votre produit complémentaire</small>
+        </span>
+      </label>
+
+      <p id="totbagui-cod-message" role="alert"></p>
+
+      <button id="totbagui-cod-submit" type="submit">
+        Confirmer ma commande
+      </button>
+      <small class="totbagui-cod-note">
+        Paiement en espèces à la livraison.
+      </small>
+    </form>
+  </div>
+</div>
+
+<style>
+#totbagui-cod-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(25, 20, 28, .62);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+#totbagui-cod-overlay[hidden] { display: none; }
+.totbagui-cod-modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: #F3F2E9;
+  color: #302A39;
+  box-shadow: 0 18px 60px #0003;
+}
+#totbagui-cod-close {
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  border: 0;
+  background: transparent;
+  color: #302A39;
+  font-size: 30px;
+  cursor: pointer;
+}
+.totbagui-cod-modal h2 {
+  font-size: 25px;
+  margin: 4px 28px 6px 0;
+}
+.totbagui-cod-modal form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+.totbagui-cod-modal label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+}
+.totbagui-cod-modal input:not([type="checkbox"]) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px;
+  border: 1px solid #B8B2BC;
+  border-radius: 8px;
+  background: #fff;
+  color: #302A39;
+  font: inherit;
+}
+.totbagui-cod-product {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+.totbagui-cod-offer {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #D6C7D5;
+  border-radius: 10px;
+}
+.totbagui-cod-offer input { margin-top: 4px; }
+.totbagui-cod-offer small {
+  display: block;
+  margin-top: 4px;
+}
+#totbagui-cod-submit {
+  width: 100%;
+  padding: 15px;
+  border: 0;
+  border-radius: 8px;
+  background: #A00079;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+#totbagui-cod-submit:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+.totbagui-cod-note {
+  text-align: center;
+  color: #696372;
+}
+#totbagui-cod-message { color: #A12222; }
+#totbagui-cod-message.totbagui-cod-success { color: #1A7A3C; }
+body.totbagui-cod-open { overflow: hidden; }
+</style>
+
+<script>
+(() => {
+  const overlay = document.getElementById('totbagui-cod-overlay');
+  if (!overlay || overlay.dataset.initialized) return;
+  overlay.dataset.initialized = 'true';
+
+  const form = document.getElementById('totbagui-cod-form');
+  const message = document.getElementById('totbagui-cod-message');
+  const submit = document.getElementById('totbagui-cod-submit');
+  let selectedProduct = null;
+
+  function openPopup() {
+    const productForm = document.querySelector(
+      'product-info form[action*="/cart/add"], ' +
+      'form[action*="/cart/add"]'
+    );
+    const variantInput = productForm?.querySelector('[name="id"]');
+    const quantityInput = productForm?.querySelector('[name="quantity"]');
+    const title = document.querySelector(
+      'product-info .product__title, .product__title, h1'
+    );
+    const price = document.querySelector(
+      'product-info .price, .product__info-wrapper .price, .price'
+    );
+
+    if (!variantInput?.value) {
+      alert('Veuillez sélectionner une variante du produit.');
+      return;
+    }
+
+    selectedProduct = {
+      variantId: Number(variantInput.value),
+      quantity: Math.max(1, Number(quantityInput?.value || 1)),
+      title: title?.innerText?.trim() || document.title,
+      priceText: price?.innerText?.trim() || ''
+    };
+
+    document.getElementById('totbagui-cod-product-name')
+      .textContent = selectedProduct.title;
+    document.getElementById('totbagui-cod-product-price')
+      .textContent = selectedProduct.priceText;
+
+    message.textContent = '';
+    overlay.hidden = false;
+    document.body.classList.add('totbagui-cod-open');
+  }
+
+  function closePopup() {
+    overlay.hidden = true;
+    document.body.classList.remove('totbagui-cod-open');
+  }
+
+  document.getElementById('totbagui-cod-close')
+    .addEventListener('click', closePopup);
+
+  overlay.addEventListener('click', event => {
+    if (event.target === overlay) closePopup();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !overlay.hidden) closePopup();
+  });
+
+  // Intercept Shopify's standard dynamic Buy Now button.
+  document.addEventListener('click', event => {
+    const button = event.target.closest(
+      '.shopify-payment-button__button'
+    );
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    openPopup();
+  }, true);
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+
+    if (!form.reportValidity() || !selectedProduct) return;
+
+    const formData = new FormData(form);
+    const payload = {
+      fullName: formData.get('fullName')?.trim(),
+      phone: formData.get('phone')?.trim(),
+      address: formData.get('address')?.trim(),
+      city: formData.get('city')?.trim(),
+      variantId: selectedProduct.variantId,
+      quantity: selectedProduct.quantity,
+      upsell: document.getElementById('totbagui-cod-upsell').checked
+    };
+
+    submit.disabled = true;
+    submit.textContent = 'Traitement en cours...';
+    message.textContent = '';
+    message.classList.remove('totbagui-cod-success');
+
+    try {
+      const response = await fetch('/apps/cod/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        message.textContent =
+          'La commande n\u2019a pas pu \u00eatre cr\u00e9\u00e9e. Veuillez v\u00e9rifier vos informations et r\u00e9essayer.';
+        submit.disabled = false;
+        submit.textContent = 'Confirmer ma commande';
+        return;
+      }
+
+      message.classList.add('totbagui-cod-success');
+      message.textContent =
+        'Votre commande ' + data.orderName + ' a bien \u00e9t\u00e9 enregistr\u00e9e. Nous vous contacterons bient\u00f4t.';
+      form.reset();
+      submit.textContent = 'Commande confirm\u00e9e \u2713';
+
+      setTimeout(closePopup, 2500);
+
+    } catch (err) {
+      message.textContent =
+        'Une erreur de connexion est survenue. Veuillez r\u00e9essayer.';
+      submit.disabled = false;
+      submit.textContent = 'Confirmer ma commande';
+    }
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "COD Order Popup",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
