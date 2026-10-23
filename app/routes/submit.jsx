@@ -68,10 +68,45 @@ export const action = async ({ request }) => {
     );
   }
 
-  // --- تحويل الهاتف للفورمات الدولي ---
   const phoneE164 = formatPhone(phoneClean);
+  const firstName = fullName.trim().split(" ")[0] || fullName.trim();
+  const lastName = fullName.trim().split(" ").slice(1).join(" ") || "-";
 
-  // --- Mutation ---
+  // --- خلق Customer أولاً ---
+  let customerId = null;
+  try {
+    const customerMutation = `#graphql
+      mutation customerCreate($input: CustomerInput!) {
+        customerCreate(input: $input) {
+          customer { id }
+          userErrors { field message }
+        }
+      }
+    `;
+    const customerRes = await admin.graphql(customerMutation, {
+      variables: {
+        input: {
+          firstName,
+          lastName,
+          phone: phoneE164,
+          addresses: [{
+            firstName,
+            lastName,
+            address1: address.trim(),
+            city: city.trim(),
+            phone: phoneE164,
+            countryCode: "MA",
+          }],
+        },
+      },
+    });
+    const customerData = await customerRes.json();
+    customerId = customerData?.data?.customerCreate?.customer?.id || null;
+  } catch (err) {
+    console.error("Customer creation failed (non-blocking):", err);
+  }
+
+  // --- خلق Order ---
   const mutation = `#graphql
     mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
       orderCreate(order: $order, options: $options) {
@@ -89,23 +124,19 @@ export const action = async ({ request }) => {
 
   const variables = {
     order: {
-      lineItems: [
-        {
-          variantId: variantGid,
-          quantity: qty,
-        },
-      ],
+      lineItems: [{ variantId: variantGid, quantity: qty }],
+      ...(customerId && { customer: { id: customerId } }),
       shippingAddress: {
-        firstName: fullName.trim().split(" ")[0] || fullName.trim(),
-        lastName: fullName.trim().split(" ").slice(1).join(" ") || "-",
+        firstName,
+        lastName,
         address1: address.trim(),
         city: city.trim(),
         phone: phoneE164,
         countryCode: "MA",
       },
       billingAddress: {
-        firstName: fullName.trim().split(" ")[0] || fullName.trim(),
-        lastName: fullName.trim().split(" ").slice(1).join(" ") || "-",
+        firstName,
+        lastName,
         address1: address.trim(),
         city: city.trim(),
         phone: phoneE164,
