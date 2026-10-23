@@ -37,28 +37,17 @@ export const action = async ({ request }) => {
 
   const { fullName, phone, address, city, variantId, quantity } = body || {};
 
-  // --- Validation ---
   const errors = [];
-  if (!fullName || typeof fullName !== "string" || fullName.trim().length < 2) {
-    errors.push("fullName");
-  }
+  if (!fullName || typeof fullName !== "string" || fullName.trim().length < 2) errors.push("fullName");
   const phoneClean = (phone || "").replace(/\s|-/g, "");
-  if (!/^(0[5-7]\d{8}|\+212[5-7]\d{8})$/.test(phoneClean)) {
-    errors.push("phone");
-  }
-  if (!address || typeof address !== "string" || address.trim().length < 3) {
-    errors.push("address");
-  }
-  if (!city || typeof city !== "string" || city.trim().length < 2) {
-    errors.push("city");
-  }
+  if (!/^(0[5-7]\d{8}|\+212[5-7]\d{8})$/.test(phoneClean)) errors.push("phone");
+  if (!address || typeof address !== "string" || address.trim().length < 3) errors.push("address");
+  if (!city || typeof city !== "string" || city.trim().length < 2) errors.push("city");
   const variantGid =
     typeof variantId === "number" || /^\d+$/.test(String(variantId))
       ? `gid://shopify/ProductVariant/${variantId}`
       : null;
-  if (!variantGid) {
-    errors.push("variantId");
-  }
+  if (!variantGid) errors.push("variantId");
   const qty = Math.max(1, parseInt(quantity, 10) || 1);
 
   if (errors.length > 0) {
@@ -72,18 +61,17 @@ export const action = async ({ request }) => {
   const firstName = fullName.trim().split(" ")[0] || fullName.trim();
   const lastName = fullName.trim().split(" ").slice(1).join(" ") || "-";
 
-  // --- خلق Customer أولاً ---
+  // --- خلق Customer ---
   let customerId = null;
   try {
-    const customerMutation = `#graphql
+    const customerRes = await admin.graphql(`#graphql
       mutation customerCreate($input: CustomerInput!) {
         customerCreate(input: $input) {
           customer { id }
           userErrors { field message }
         }
       }
-    `;
-    const customerRes = await admin.graphql(customerMutation, {
+    `, {
       variables: {
         input: {
           firstName,
@@ -106,26 +94,10 @@ export const action = async ({ request }) => {
     console.error("Customer creation failed (non-blocking):", err);
   }
 
-  // --- خلق Order ---
-  const mutation = `#graphql
-    mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
-      orderCreate(order: $order, options: $options) {
-        order {
-          id
-          name
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
-
+  // --- خلق Order بلا customer ---
   const variables = {
     order: {
       lineItems: [{ variantId: variantGid, quantity: qty }],
-      ...(customerId && { customer: { id: customerId } }),
       shippingAddress: {
         firstName,
         lastName,
@@ -154,9 +126,16 @@ export const action = async ({ request }) => {
   };
 
   try {
-    const response = await admin.graphql(mutation, { variables });
-    const data = await response.json();
+    const response = await admin.graphql(`#graphql
+      mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
+        orderCreate(order: $order, options: $options) {
+          order { id name }
+          userErrors { field message }
+        }
+      }
+    `, { variables });
 
+    const data = await response.json();
     const result = data?.data?.orderCreate;
     const userErrors = result?.userErrors || [];
 
@@ -165,6 +144,29 @@ export const action = async ({ request }) => {
         JSON.stringify({ error: "Shopify rejected the order", details: userErrors }),
         { status: 422, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // --- ربط Customer بالـ Order ---
+    if (customerId && result.order.id) {
+      try {
+        await admin.graphql(`#graphql
+          mutation orderUpdate($input: OrderInput!) {
+            orderUpdate(input: $input) {
+              order { id }
+              userErrors { field message }
+            }
+          }
+        `, {
+          variables: {
+            input: {
+              id: result.order.id,
+              customerId: customerId,
+            }
+          }
+        });
+      } catch (e) {
+        console.error("Customer link failed (non-blocking):", e);
+      }
     }
 
     return new Response(
