@@ -2,7 +2,7 @@
 
 client_id = "5840d67bbf18516b3305958235e4b7d1"
 name = "tot-bagui-cod"
-application_url = "https://example.com"
+application_url = "https://tot-bagui-cod.vercel.app"
 embedded = true
 
 [access_scopes]
