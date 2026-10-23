@@ -96,7 +96,7 @@
   gap: 7px;
   font-size: 14px;
 }
-.totbagui-cod-modal input {
+.totbagui-cod-modal input:not([type="checkbox"]) {
   width: 100%;
   box-sizing: border-box;
   padding: 13px;
@@ -111,6 +111,19 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 20px;
+}
+.totbagui-cod-offer {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #D6C7D5;
+  border-radius: 10px;
+}
+.totbagui-cod-offer input { margin-top: 4px; }
+.totbagui-cod-offer small {
+  display: block;
+  margin-top: 4px;
 }
 #totbagui-cod-submit {
   width: 100%;
@@ -157,6 +170,9 @@ body.totbagui-cod-open { overflow: hidden; }
     const title = document.querySelector(
       'product-info .product__title, .product__title, h1'
     );
+    const price = document.querySelector(
+      'product-info .price, .product__info-wrapper .price, .price'
+    );
 
     if (!variantInput?.value) {
       alert('Veuillez sélectionner une variante du produit.');
@@ -167,10 +183,13 @@ body.totbagui-cod-open { overflow: hidden; }
       variantId: Number(variantInput.value),
       quantity: Math.max(1, Number(quantityInput?.value || 1)),
       title: title?.innerText?.trim() || document.title,
+      priceText: price?.innerText?.trim() || ''
     };
 
     document.getElementById('totbagui-cod-product-name')
       .textContent = selectedProduct.title;
+    document.getElementById('totbagui-cod-product-price')
+      .textContent = selectedProduct.priceText;
 
     message.textContent = '';
     overlay.hidden = false;
@@ -193,6 +212,7 @@ body.totbagui-cod-open { overflow: hidden; }
     if (event.key === 'Escape' && !overlay.hidden) closePopup();
   });
 
+  // Intercept Shopify's standard dynamic Buy Now button.
   document.addEventListener('click', event => {
     const button = event.target.closest(
       '.shopify-payment-button__button'
