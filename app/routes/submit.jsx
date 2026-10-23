@@ -90,7 +90,7 @@ export const action = async ({ request }) => {
     });
     const customerData = await customerRes.json();
     customerId = customerData?.data?.customerCreate?.customer?.id || null;
-    console.log("Customer result:", JSON.stringify(customerData?.data?.customerCreate));
+    console.log("Customer result:", JSON.stringify(customerData?.data?.customerCreate));  
   } catch (err) {
     console.error("Customer creation failed (non-blocking):", err);
   }
@@ -148,27 +148,28 @@ export const action = async ({ request }) => {
     }
 
     // --- ربط Customer بالـ Order ---
-    if (customerId && result.order.id) {
-      try {
-        await admin.graphql(`#graphql
-          mutation orderUpdate($input: OrderInput!) {
-            orderUpdate(input: $input) {
-              order { id }
-              userErrors { field message }
-            }
-          }
-        `, {
-          variables: {
-            input: {
-              id: result.order.id,
-              customerId: customerId,
-            }
-          }
-        });
-      } catch (e) {
-        console.error("Customer link failed (non-blocking):", e);
+    // ربط Customer بالـ Order
+if (customerId && result.order.id) {
+  try {
+    await admin.graphql(`#graphql
+      mutation orderSetCustomer($input: OrderSetCustomerInput!) {
+        orderSetCustomer(input: $input) {
+          order { id }
+          userErrors { field message }
+        }
       }
-    }
+    `, {
+      variables: {
+        input: {
+          orderId: result.order.id,
+          customerId: customerId,
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Customer link failed (non-blocking):", e);
+  }
+}
 
     return new Response(
       JSON.stringify({
