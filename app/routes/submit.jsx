@@ -88,33 +88,36 @@ export const action = async ({ request }) => {
   `;
 
   const variables = {
-    order: {
-      lineItems: [
-        {
-          variantId: variantGid,
-          quantity: qty,
-        },
-      ],
-      shippingAddress: {
-        firstName: fullName.trim().split(" ")[0] || fullName.trim(),
-        lastName: fullName.trim().split(" ").slice(1).join(" ") || "-",
-        address1: address.trim(),
-        city: city.trim(),
-        phone: phoneE164,
-        countryCode: "MA",
+  order: {
+    lineItems: [
+      {
+        variantId: variantGid,
+        quantity: qty,
       },
+    ],
+    customer: {
+      firstName: fullName.trim().split(" ")[0] || fullName.trim(),
+      lastName: fullName.trim().split(" ").slice(1).join(" ") || "-",
       phone: phoneE164,
-      tags: ["COD"],
-      note: `Commande COD via popup. Offre spéciale: ${
-        body.upsell ? "oui" : "non"
-      }`,
-      financialStatus: "PENDING",
     },
-    options: {
-      sendReceipt: false,
-      sendFulfillmentReceipt: false,
+    shippingAddress: {
+      firstName: fullName.trim().split(" ")[0] || fullName.trim(),
+      lastName: fullName.trim().split(" ").slice(1).join(" ") || "-",
+      address1: address.trim(),
+      city: city.trim(),
+      phone: phoneE164,
+      countryCode: "MA",
     },
-  };
+    phone: phoneE164,
+    tags: ["COD"],
+    note: `Commande COD via popup.`,
+    financialStatus: "PENDING",
+  },
+  options: {
+    sendReceipt: false,
+    sendFulfillmentReceipt: false,
+  },
+};
 
   try {
     const response = await admin.graphql(mutation, { variables });
