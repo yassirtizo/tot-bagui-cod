@@ -11,7 +11,6 @@
 
     <div class="totbagui-cod-product">
       <strong id="totbagui-cod-product-name">Votre produit</strong>
-      <span id="totbagui-cod-product-price"></span>
     </div>
 
     <form id="totbagui-cod-form">
@@ -34,14 +33,6 @@
       <label>Ville
         <input name="city" required autocomplete="address-level2"
                placeholder="Casablanca">
-      </label>
-
-      <label class="totbagui-cod-offer">
-        <input type="checkbox" id="totbagui-cod-upsell">
-        <span>
-          <strong>Ajouter une offre spéciale</strong>
-          <small>Proposez ici votre produit complémentaire</small>
-        </span>
       </label>
 
       <p id="totbagui-cod-message" role="alert"></p>
@@ -245,8 +236,7 @@ body.totbagui-cod-open { overflow: hidden; }
       address: formData.get('address')?.trim(),
       city: formData.get('city')?.trim(),
       variantId: selectedProduct.variantId,
-      quantity: selectedProduct.quantity,
-      upsell: document.getElementById('totbagui-cod-upsell').checked
+      quantity: selectedProduct.quantity
     };
 
     submit.disabled = true;
