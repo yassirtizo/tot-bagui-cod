@@ -90,6 +90,7 @@ export const action = async ({ request }) => {
     });
     const customerData = await customerRes.json();
     customerId = customerData?.data?.customerCreate?.customer?.id || null;
+    console.log("Customer result:", JSON.stringify(customerData?.data?.customerCreate));
   } catch (err) {
     console.error("Customer creation failed (non-blocking):", err);
   }
